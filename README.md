@@ -6,3 +6,13 @@ The dataset is taken from: [Histopathologic Cancer Detection](https://www.kaggle
 ## Problem Defination
 It belongs to the binary image classification problem domain.
 
+## Project structure
+```sh
+C:.
+├───inputs
+│   ├───test
+│   └───train
+├───notebooks
+│   └───.ipynb_checkpoints
+└───src
+```
