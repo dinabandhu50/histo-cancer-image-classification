@@ -58,8 +58,8 @@ class ClassificationDataset(Dataset):
         }
 
 class HistoCancerDataset(torch.utils.data.Dataset):
-    # def __init__(self, data_dir, transform=transforms.Compose([transforms.ToTensor()])):
-    def __init__(self, data_dir, transform=None):
+    def __init__(self, data_dir, transform=transforms.Compose([transforms.ToTensor()])):
+    # def __init__(self, data_dir, transform=None):
         # path to data folder
         path2data = os.path.join(data_dir,'train')
         # # path to csv labels file
@@ -83,13 +83,17 @@ class HistoCancerDataset(torch.utils.data.Dataset):
         target = self.labels[idx]
         # image to np.array
         image = np.array(image)
-        # transpose image to torch format [B,C,H,W]
-        image = np.transpose(image,[2,0,1])
+        
+        # using ToTensor No need of transposing
+        # # transpose image to torch format [B,C,H,W] 
+        # image = np.transpose(image,[2,0,1])
+        
         # do the transformations
         if self.transform is not None:
             image = self.transform(image)
 
-        return torch.tensor(image), torch.tensor(target).reshape(-1)
+        # don't forget to transform.ToTensor() for image
+        return image, torch.tensor(target).reshape(-1)
 
 
 if __name__ == '__main__':
