@@ -16,12 +16,13 @@ seed_everything(seed=42)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class ClassificationDataset(Dataset):
-    def __init__(self, image_paths, targets, augmentations=None):
+    def __init__(self, image_paths, targets, resize=None, augmentations=None):
         """Image classification dataset for binary classification.
 
         Args:
             image_paths ([list]): list containing full path to images to be read
             targets ([list]): list containing target values corresponding to image 
+            resize (optional): resize param, default is None.
             augmentations ([type], optional): albumentation image augmentations. Defaults to None.
             returns ([dict]): returns dictionary containing image and the label of that image as follow  
             {
@@ -31,16 +32,21 @@ class ClassificationDataset(Dataset):
         """
         self.image_paths = image_paths
         self.targets = targets
+        self.resize = resize
         self.augmentations = augmentations
     
     def __len__(self):
-        return len(self.csv_file)
+        return len(self.image_paths)
     
     def __getitem__(self,idx):
         image = Image.open(self.image_paths[idx])
         image = image.convert("RGB")
         target = self.targets[idx]
 
+        # resize if needed
+        if self.resize is not None:
+            image = image.resize((self.resize[1], self.resize[0]),resample=Image.BILINEAR)
+        
         # convert to numpy 
         image = np.array(image)
         target = np.array(target)
@@ -49,13 +55,14 @@ class ClassificationDataset(Dataset):
             augments = self.augmentations(image=image)
             image = augments["image"]
         
-        # # pytorch expects CHW instead of HWC
-        # image = np.transpose(image,(2,0,1)).astype(np.float32)
+        # pytorch expects CHW instead of HWC
+        image = np.transpose(image,(2,0,1)).astype(np.float32)
 
         return {
             "x" : torch.tensor(image,dtype=torch.float),
             "y" : torch.tensor(target,dtype=torch.long),
         }
+
 
 class HistoCancerDataset(torch.utils.data.Dataset):
     def __init__(self, data_dir, transform=transforms.Compose([transforms.ToTensor()])):
@@ -102,31 +109,31 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import time
 
-    start_time = time.time()
-    data = HistoCancerDataset(data_dir=os.path.join(config.ROOT_DIR,"inputs"))
-    img , target = data[9]
-    # print(img, target)
-    print(img.shape, target.shape)
-    print("target: ",target)
-    print("Dataset length: ",len(data))
-    print(f"Duration of code execution: {time.time() - start_time}")
-    # plt.figure()
-    # plt.imshow(img)
-    # plt.show()
+    # start_time = time.time()
+    # data = HistoCancerDataset(data_dir=os.path.join(config.ROOT_DIR,"inputs"))
+    # img , target = data[9]
+    # # print(img, target)
+    # print(img.shape, target.shape)
+    # print("target: ",target)
+    # print("Dataset length: ",len(data))
+    # print(f"Duration of code execution: {time.time() - start_time}")
+    # # plt.figure()
+    # # plt.imshow(img)
+    # # plt.show()
 
     ## ---------------------------------------------------------------------------------
-    # start_time = time.time()
-    # data_path = os.path.join(config.ROOT_DIR,"inputs")
-    # df = pd.read_csv(os.path.join(config.ROOT_DIR,"inputs","train_labels.csv"))
-    # images = df.id.values.tolist()
-    # images = [os.path.join(data_path,"train",img+".tif") for img in images]
-    # targets = df.label.values
-    # data = ClassificationDataset(image_paths=images,targets=targets)
-    # idx = 9
-    # img, target = data[idx]["x"], data[idx]["y"]
-    # print(img, target)
-    # print(img.shape,torch.min(img),torch.max(img))
-    # print(f"Duration od code execution: {time.time() - start_time}")
+    start_time = time.time()
+    data_path = os.path.join(config.ROOT_DIR,"inputs")
+    df = pd.read_csv(os.path.join(config.ROOT_DIR,"inputs","train_labels.csv"))
+    images = df.id.values.tolist()
+    images = [os.path.join(data_path,"train",img+".tif") for img in images]
+    targets = df.label.values
+    data = ClassificationDataset(image_paths=images,targets=targets)
+    idx = 9
+    img, target = data[idx]["x"], data[idx]["y"]
+    print(img, target)
+    print(img.shape,torch.min(img),torch.max(img))
+    print(f"Duration of code execution: {time.time() - start_time}")
 
     # plt.figure()
     # plt.imshow(img.numpy().astype(np.uint8))
