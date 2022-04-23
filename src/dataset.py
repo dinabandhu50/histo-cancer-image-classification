@@ -59,8 +59,8 @@ class ClassificationDataset(Dataset):
         image = np.transpose(image,(2,0,1)).astype(np.float32)
 
         return {
-            "x" : torch.tensor(image,dtype=torch.float),
-            "y" : torch.tensor(target,dtype=torch.long),
+            "image" : torch.tensor(image,dtype=torch.float),
+            "targets" : torch.tensor(target,dtype=torch.long),
         }
 
 
