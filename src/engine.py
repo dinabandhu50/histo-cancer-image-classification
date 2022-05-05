@@ -1,6 +1,4 @@
 # write engine class containing train evaluate and inference methods here
-#  
-
 import torch
 import torch.nn as nn
 
@@ -84,6 +82,4 @@ def evaluate(data_loader, model, device):
     
     # return final output and final targets
     return final_outputs, final_targets
-
-
 

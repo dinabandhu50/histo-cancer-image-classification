@@ -1,6 +1,8 @@
 # write the training code here
 import os
 import config
+import time
+import copy
 
 import numpy as np
 import pandas as pd
@@ -10,7 +12,6 @@ import torch
 
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
-from torch.utils.data import random_split
 
 import dataset
 import engine
@@ -39,7 +40,11 @@ if __name__ == '__main__':
     targets = df.label.values.tolist()
 
     # get the model
-    model = get_model(pretrained=True)
+    # model_name = "alexnet"
+    # model_name = "resnet18"
+    model_name = "mobilenet_v2"
+
+    model = get_model(model_name=model_name,pretrained=True)
 
     # move model to device
     model.to(device)
@@ -67,36 +72,55 @@ if __name__ == '__main__':
     # with a fixed random state
     train_images, valid_images, train_targets, valid_targets = train_test_split(images, targets, stratify=targets, random_state=42)
 
+    # hyper-parameters
+    BATCH_SIZE = 64
+    NUM_WORKERS = 6
+    RESIZE = 128
+    # LR = 3e-4
+    LR = 1e-5 
+
     # fetch the ClassificationDataset class
     train_dataset = dataset.ClassificationDataset(
     image_paths=train_images,
     targets=train_targets,
-    resize=(227, 227),
+    resize=(RESIZE, RESIZE),
     augmentations=aug,
     )
     # torch dataloader creates batches of data
     # from classification dataset class
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=2)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
     # same for validation data
     valid_dataset = dataset.ClassificationDataset(
     image_paths=valid_images,
     targets=valid_targets,
-    resize=(227, 227),
+    resize=(RESIZE, RESIZE),
     augmentations=aug,
     )
-    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=16, shuffle=False, num_workers=4)
+    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 
     # simple Adam optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     
+    # lr scheduler
+    
+
     # infos
     print(f"using device: {device}")
-    print(f"pretrained model: alexnet")
+    print(f"pretrained model: {model_name}")
+    print(f"Epoch Size: {epochs}")
+    print(f"Batch Size: {BATCH_SIZE}")
+    print(f"Re-Size: {RESIZE}")
 
     # train and print auc score for all epochs
     for epoch in range(epochs):
+        start_time = time.time()
         engine.train(train_loader, model, optimizer, device=device)
-        predictions, valid_targets = engine.evaluate(valid_loader, model, device=device)
-        roc_auc = metrics.roc_auc_score(valid_targets, predictions)
-        print(f"Epoch={epoch}, Valid ROC AUC={roc_auc}")
+        # evaluate train
+        train_preds, train_targets = engine.evaluate(train_loader, model, device=device)
+        train_roc_auc = metrics.roc_auc_score(train_targets, train_preds)
+        # evaluate valid
+        valid_preds, valid_targets = engine.evaluate(valid_loader, model, device=device)
+        valid_roc_auc = metrics.roc_auc_score(valid_targets, valid_preds)
+
+        print(f"Epoch={epoch}, Train ROC-AUC={train_roc_auc: 0.4f}, Valid ROC-AUC={valid_roc_auc: 0.4f}, time={((time.time() - start_time))/60} mins ")
