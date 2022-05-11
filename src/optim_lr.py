@@ -1,3 +1,9 @@
+'''
+References:
+    - Book: Programming pytorch for deep learning
+    - https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html
+'''
+
 import os
 import config
 import time
@@ -20,11 +26,12 @@ import dataset
 from model import get_model
 
 
-def find_lr(model, loss_fn, optimizer, train_loader, init_value=1e-8, final_value=10.0):
+def find_lr(model, loss_fn, optimizer, train_loader, init_value=1e-8, final_value=10.0, beta=0.98):
     number_in_epoch = len(train_loader) - 1
     update_step = (final_value / init_value) ** (1 / number_in_epoch)
     lr = init_value
     optimizer.param_groups[0]["lr"] = lr
+    avg_loss = 0.0
     best_loss = 0.0
     batch_num = 0
     losses = []
@@ -32,49 +39,60 @@ def find_lr(model, loss_fn, optimizer, train_loader, init_value=1e-8, final_valu
     count = 0
     for data in train_loader:
         batch_num += 1
+
         # remember we have image and target in our dataset class
         inputs = data["image"]
         targets = data["targets"]
-
         # move inputs/targets to cuda/cpu device
         inputs = inputs.to(device, dtype=torch.float)
         targets = targets.to(device, dtype=torch.float)
-
         # inputs, labels = data
         # inputs, labels = inputs, labels
+
         optimizer.zero_grad()
         outputs = model(inputs)
         # print("op shape",outputs.shape)
 
-        # loss = loss_fn(outputs, targets)
-        # loss = loss_fn(outputs, targets.view(-1,1))
-        loss = nn.BCEWithLogitsLoss()(outputs, targets.view(-1,1))
+        # set loss function
+        # loss = nn.BCEWithLogitsLoss()(outputs, targets.view(-1,1))
+        loss = loss_fn(outputs, targets.view(-1,1))
 
-        # Crash out if loss explodes
-        if batch_num > 1 and loss > 4 * best_loss:
-            # return log_lrs[10:-5], losses[10:-5]
+        # smooth version
+        avg_loss = beta * avg_loss + (1 - beta) * loss.item()
+        smooth_loss = avg_loss / (1 - beta**batch_num)
+
+
+        # Crash out if loss explodes        
+        # smooth version
+        if batch_num > 1 and smooth_loss > 4 * best_loss:
             return log_lrs, losses
         # Record the best loss
-        if loss < best_loss or batch_num == 1:
-            best_loss = loss
-        # Store the values
+        # if loss < best_loss or batch_num == 1:
+            # best_loss = loss
+        # smooth version
+        if smooth_loss < best_loss or batch_num == 1:
+            best_loss = smooth_loss
+        
+        ## Store the values
         temp_loss = loss.detach().cpu().numpy().tolist()
-        print(f"count: {count}, loss: {temp_loss}")
-        losses.append(temp_loss)
-        # print("loss after",loss.detach().cpu().numpy().tolist())
-
+        ## smooth version
+        temp_smooth_loss = loss.detach().cpu().numpy().tolist()
+        print(f"count: {count}, loss: {temp_loss}, smooth_loss: {smooth_loss}")
+        losses.append(temp_smooth_loss)
         log_lrs.append(math.log10(lr))
+
         # Do the backward pass and optimize
         loss.backward()
         optimizer.step()
         # Update the lr for the next step and store
         lr *= update_step
         optimizer.param_groups[0]["lr"] = lr
+
+        
         count += 1
         # if count>10:
         #     break
 
-    # return log_lrs[10:-5], losses[10:-5]
     return log_lrs, losses
 
 
@@ -141,7 +159,8 @@ if __name__ == '__main__':
         model=model,
         optimizer=optimizer,
         loss_fn=loss_fn, 
-        train_loader=train_loader
+        train_loader=train_loader,
+        final_value=1.0,
     )
 
     # plot

@@ -9,6 +9,7 @@ import pandas as pd
 
 import albumentations
 import torch
+import torch.nn as nn
 
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
@@ -16,6 +17,8 @@ from sklearn.model_selection import train_test_split
 import dataset
 import engine
 from model import get_model
+
+from tqdm import tqdm
 
 
 
@@ -41,8 +44,8 @@ if __name__ == '__main__':
 
     # get the model
     # model_name = "alexnet"
-    # model_name = "resnet18"
-    model_name = "mobilenet_v2"
+    model_name = "resnet18"
+    # model_name = "mobilenet_v2"
 
     model = get_model(model_name=model_name,pretrained=True)
 
@@ -73,9 +76,10 @@ if __name__ == '__main__':
     train_images, valid_images, train_targets, valid_targets = train_test_split(images, targets, stratify=targets, random_state=42)
 
     # hyper-parameters
-    BATCH_SIZE = 64
+    # BATCH_SIZE = 64
+    BATCH_SIZE = 128
     NUM_WORKERS = 6
-    RESIZE = 128
+    RESIZE = 64
     # LR = 3e-4
     LR = 1e-5 
 
@@ -99,9 +103,21 @@ if __name__ == '__main__':
     )
     valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 
+    # loss function 
+    criterion = nn.BCEWithLogitsLoss()
     # simple Adam optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    
+    # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer = torch.optim.Adam([
+        { 'params': model.layer4.parameters(), 'lr': LR/3},
+        { 'params': model.layer3.parameters(), 'lr': LR/9},
+    ], lr=LR)
+
+    # unfreeze the last layers
+    unfreeze_layers = [model.layer3, model.layer4]
+    for layer in unfreeze_layers:
+        for param in layer.parameters():
+            param.requires_grad = True
+
     # lr scheduler
     
 
@@ -111,16 +127,20 @@ if __name__ == '__main__':
     print(f"Epoch Size: {epochs}")
     print(f"Batch Size: {BATCH_SIZE}")
     print(f"Re-Size: {RESIZE}")
-
+    print(f"len(data_loader) ={len(train_loader)}, len(valid_loader)={len(valid_loader)}")
+    print("----------start training---------\n")
+    
     # train and print auc score for all epochs
     for epoch in range(epochs):
         start_time = time.time()
-        engine.train(train_loader, model, optimizer, device=device)
+        engine.train(train_dataset, train_loader, model, criterion, optimizer, device=device)
         # evaluate train
-        train_preds, train_targets = engine.evaluate(train_loader, model, device=device)
+        train_preds, train_targets, avg_train_loss = engine.evaluate(train_loader, model, criterion, device=device)
         train_roc_auc = metrics.roc_auc_score(train_targets, train_preds)
         # evaluate valid
-        valid_preds, valid_targets = engine.evaluate(valid_loader, model, device=device)
+        valid_preds, valid_targets, avg_valid_loss = engine.evaluate(valid_loader, model, criterion, device=device)
         valid_roc_auc = metrics.roc_auc_score(valid_targets, valid_preds)
 
         print(f"Epoch={epoch}, Train ROC-AUC={train_roc_auc: 0.4f}, Valid ROC-AUC={valid_roc_auc: 0.4f}, time={((time.time() - start_time))/60} mins ")
+
+    print("--------Done----------")

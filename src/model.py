@@ -9,7 +9,6 @@ def get_model(model_name='resnet18',pretrained=True):
     # model_name = "efficientnet_b0"
     # model_name = "mobilenet_v2"
 
-
     if model_name == "alexnet":
         if pretrained:
             model = pretrainedmodels.__dict__[model_name](pretrained='imagenet')
@@ -26,6 +25,7 @@ def get_model(model_name='resnet18',pretrained=True):
             nn.Dropout(p=0.5),
             nn.Linear(in_features=1024, out_features=1),
         )
+
     elif model_name == "resnet18":
         if pretrained:
             model = pretrainedmodels.__dict__[model_name](pretrained='imagenet')
@@ -42,6 +42,7 @@ def get_model(model_name='resnet18',pretrained=True):
             nn.Dropout(p=0.5),
             nn.Linear(in_features=1024, out_features=1),
         )
+
     elif model_name == "efficientnet_b0":
         model = models.efficientnet_b0(pretrained=True)
         # for param in model.parameters():
@@ -87,8 +88,10 @@ if __name__ == '__main__':
     #     num_params = sum(p.numel() for p in model.parameters())
     #     print(f"{model_name} total parameters: {num_params/10**6} Million")
 
-    model_name = 'mobilenet_v2'
+
+    # model_name = 'mobilenet_v2'
+    model_name = 'resnet18'
     model = get_model(model_name=model_name)
-    # print(model)
-    for param in model.parameters():
-        print(param.shape, param.requires_grad)
+    print(model)
+    # for param in model.parameters():
+        # print(param.shape, param.requires_grad)
