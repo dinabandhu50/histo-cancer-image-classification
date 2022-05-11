@@ -16,13 +16,5 @@ C:.
 │   └───.ipynb_checkpoints
 └───src
 ```
+## How to think about the src/
 
-
----
-
-mobilenet_v2 full 
-    with 1024>512>1 
-        5 min
-    with 1024>256>1
-        2.6 min
-    
