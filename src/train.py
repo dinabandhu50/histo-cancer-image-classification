@@ -22,7 +22,6 @@ from tqdm import tqdm
 
 
 
-
 if __name__ == '__main__':
     # location of train.csv and train_png folder
     data_path = os.path.join(config.ROOT_DIR,"inputs")
@@ -77,7 +76,8 @@ if __name__ == '__main__':
 
     # hyper-parameters
     # BATCH_SIZE = 64
-    BATCH_SIZE = 128
+    BATCH_SIZE_TRAIN = 128
+    BATCH_SIZE_VALID = 256
     NUM_WORKERS = 6
     RESIZE = 64
     # LR = 3e-4
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     )
     # torch dataloader creates batches of data
     # from classification dataset class
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE_TRAIN, shuffle=True, num_workers=NUM_WORKERS)
 
     # same for validation data
     valid_dataset = dataset.ClassificationDataset(
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     resize=(RESIZE, RESIZE),
     augmentations=aug,
     )
-    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
+    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=BATCH_SIZE_VALID, shuffle=False, num_workers=NUM_WORKERS)
 
     # loss function 
     criterion = nn.BCEWithLogitsLoss()
@@ -125,7 +125,8 @@ if __name__ == '__main__':
     print(f"using device: {device}")
     print(f"pretrained model: {model_name}")
     print(f"Epoch Size: {epochs}")
-    print(f"Batch Size: {BATCH_SIZE}")
+    print(f"Train batch Size: {BATCH_SIZE_TRAIN}")
+    print(f"Train batch Size: {BATCH_SIZE_VALID}")
     print(f"Re-Size: {RESIZE}")
     print(f"len(data_loader) ={len(train_loader)}, len(valid_loader)={len(valid_loader)}")
     print("----------start training---------\n")
@@ -135,12 +136,12 @@ if __name__ == '__main__':
         start_time = time.time()
         engine.train(train_dataset, train_loader, model, criterion, optimizer, device=device)
         # evaluate train
-        train_preds, train_targets, avg_train_loss = engine.evaluate(train_loader, model, criterion, device=device)
+        train_preds, train_targets, avg_train_loss = engine.evaluate(train_dataset, train_loader, model, criterion, device=device)
         train_roc_auc = metrics.roc_auc_score(train_targets, train_preds)
         # evaluate valid
-        valid_preds, valid_targets, avg_valid_loss = engine.evaluate(valid_loader, model, criterion, device=device)
+        valid_preds, valid_targets, avg_valid_loss = engine.evaluate(valid_dataset, valid_loader, model, criterion, device=device)
         valid_roc_auc = metrics.roc_auc_score(valid_targets, valid_preds)
 
         print(f"Epoch={epoch}, Train ROC-AUC={train_roc_auc: 0.4f}, Valid ROC-AUC={valid_roc_auc: 0.4f}, time={((time.time() - start_time))/60} mins ")
 
-    print("--------Done----------")
+    print("\n----------------Done---------------")

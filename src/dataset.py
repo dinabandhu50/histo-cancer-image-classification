@@ -129,10 +129,10 @@ if __name__ == '__main__':
     images = [os.path.join(data_path,"train",img+".tif") for img in images]
     targets = df.label.values
     data = ClassificationDataset(image_paths=images,targets=targets)
-    idx = 9
-    img, target = data[idx]["x"], data[idx]["y"]
-    print(img, target)
-    print(img.shape,torch.min(img),torch.max(img))
+    # idx = 9
+    # img, target = data[idx]["image"], data[idx]["targets"]
+    # print(img, target)
+    # print(img.shape,torch.min(img),torch.max(img))
     print(f"Duration of code execution: {time.time() - start_time}")
 
     # plt.figure()
